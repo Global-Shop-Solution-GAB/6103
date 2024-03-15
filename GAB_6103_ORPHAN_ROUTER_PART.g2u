@@ -1,0 +1,189 @@
+Program.Sub.ScreenSU.Start
+Gui.F_PartRouter..Create
+Gui.F_PartRouter..Caption("Part Not Found In Router")
+Gui.F_PartRouter..Size(11160,8700)
+Gui.F_PartRouter..MinX(0)
+Gui.F_PartRouter..MinY(0)
+Gui.F_PartRouter..Position(0,0)
+Gui.F_PartRouter..BackColor(-2147483633)
+Gui.F_PartRouter..MousePointer(0)
+Gui.F_PartRouter..Event(UnLoad,Unload)
+Gui.F_PartRouter.tab1.Create(Tab)
+Gui.F_PartRouter.tab1.Size(10800,7980)
+Gui.F_PartRouter.tab1.Position(60,105)
+Gui.F_PartRouter.tab1.FontSize(9)
+Gui.F_PartRouter.tab1.Tabs(2)
+Gui.F_PartRouter.tab1.SetTab(0)
+Gui.F_PartRouter.tab1.Caption("Part Not Found in Router")
+Gui.F_PartRouter.tab1.SetTab(1)
+Gui.F_PartRouter.tab1.Caption("Part Without Router")
+Gui.F_PartRouter.lbl1.Create(Label,"PL",True,345,255,0,90,135,True,0,"Arial",9,-2147483633,0)
+Gui.F_PartRouter.lbl1.Parent("tab1",0)
+Gui.F_PartRouter.ddlPL1.Create(DropDownList)
+Gui.F_PartRouter.ddlPL1.Size(855,345)
+Gui.F_PartRouter.ddlPL1.Position(105,375)
+Gui.F_PartRouter.ddlPL1.FontSize(9)
+Gui.F_PartRouter.ddlPL1.Parent("tab1",0)
+Gui.F_PartRouter.cmdRefresh1.Create(Button)
+Gui.F_PartRouter.cmdRefresh1.Size(1290,585)
+Gui.F_PartRouter.cmdRefresh1.Position(1140,150)
+Gui.F_PartRouter.cmdRefresh1.Caption("REFRESH")
+Gui.F_PartRouter.cmdRefresh1.FontSize(9)
+Gui.F_PartRouter.cmdRefresh1.Event(Click,cmdRefresh_Click)
+Gui.F_PartRouter.cmdRefresh1.Parent("tab1",0)
+Gui.F_PartRouter.GsGCList1.Create(GsGridControl)
+Gui.F_PartRouter.GsGCList1.Size(10470,6600)
+Gui.F_PartRouter.GsGCList1.Position(120,855)
+Gui.F_PartRouter.GsGCList1.Parent("tab1",0)
+Gui.F_PartRouter.lbl2.Create(Label,"PL",True,345,255,0,90,135,True,0,"Arial",9,-2147483633,0)
+Gui.F_PartRouter.lbl2.Parent("tab1",1)
+Gui.F_PartRouter.ddlPL2.Create(DropDownList)
+Gui.F_PartRouter.ddlPL2.Size(855,345)
+Gui.F_PartRouter.ddlPL2.Position(105,375)
+Gui.F_PartRouter.ddlPL2.FontSize(9)
+Gui.F_PartRouter.ddlPL2.Parent("tab1",1)
+Gui.F_PartRouter.cmdRefresh2.Create(Button)
+Gui.F_PartRouter.cmdRefresh2.Size(1290,585)
+Gui.F_PartRouter.cmdRefresh2.Position(1140,150)
+Gui.F_PartRouter.cmdRefresh2.Caption("REFRESH")
+Gui.F_PartRouter.cmdRefresh2.FontSize(9)
+Gui.F_PartRouter.cmdRefresh2.Event(Click,cmdRefresh2_Click)
+Gui.F_PartRouter.cmdRefresh2.Parent("tab1",1)
+Gui.F_PartRouter.GsGCList2.Create(GsGridControl)
+Gui.F_PartRouter.GsGCList2.Size(10470,6600)
+Gui.F_PartRouter.GsGCList2.Position(120,855)
+Gui.F_PartRouter.GsGCList2.Parent("tab1",1)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+V.Local.sIcon.Declare
+
+F.Intrinsic.String.Concat(V.Caller.GasDir,"\gss2.ico",V.Local.sIcon)
+Gui.F_PartRouter..Icon(V.Local.sIcon)
+
+F.ODBC.Connection!conx.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+'Fill up the PL dropdown
+F.Data.Dictionary.CreateFromSQL("dicPL","conx","select distinct(product_line), product_line from v_inventory_mstr order by product_line")
+gui.F_PartRouter.ddlPL1.AddItems("Dictionary","dicPL")
+Gui.F_PartRouter.ddlPL2.AddItems("Dictionary","dicPL")
+F.Data.Dictionary.Close("dicPL")
+
+'Gui.F_PartRouter.tab1.Anchor(15)
+'gui.F_PartRouter.GsGCList1.Anchor(15)
+'Gui.F_PartRouter.GsGCList2.Anchor(15)
+Gui.F_PartRouter.tab1.SetTab(0)
+Gui.F_PartRouter..Show
+Program.Sub.Main.End
+
+Program.Sub.Unload.Start
+F.Intrinsic.Control.If(V.DataTable.dtInventory.Exists,=,True)
+	F.Data.DataTable.Close("dtInventory")
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.If(V.DataTable.dtInvFG.Exists,=,True)
+	F.Data.DataTable.Close("dtInvFG")
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!conx.Close
+F.Intrinsic.Control.End
+
+Program.Sub.Unload.End
+
+Program.Sub.cmdRefresh_Click.Start
+V.Local.i1.Declare
+V.Local.i2.Declare
+V.Local.sFilter.Declare
+V.Local.sPL.Declare
+V.Local.sRet.Declare
+V.Local.sSQL.Declare
+
+V.Local.sPL.Set(V.Screen.F_PartRouter!ddlPL1.Text)
+
+F.Intrinsic.UI.InvokeWaitDialog("Retrieving inventory and router line info")
+
+F.Intrinsic.Control.If(V.DataTable.dtInventory.Exists,=,True)
+	F.Data.DataTable.Close("dtInventory")
+F.Intrinsic.Control.EndIf
+
+'Retrieve inventory master with the selected PL
+F.Intrinsic.String.Build("select Part, Description from v_inventory_mstr where product_line = '{0}' order by part",V.Local.sPL.Trim,V.Local.sSQL)
+F.Data.DataTable.CreateFromSQL("dtInventory","conx",V.Local.sSQL,True)
+
+'Retrieve distinct material sequence from router_line
+F.Data.DataTable.CreateFromSQL("dtRouter","conx","select distinct(part_wc_outside) as Part from v_router_line order by part_wc_outside",True)
+
+F.Intrinsic.Control.If(V.DataTable.dtInventory.RowCount,>,0)
+	F.Intrinsic.Control.For(V.Local.i1,V.DataTable.dtInventory.RowCount--,0,-1)
+		F.Intrinsic.Math.Add(V.Local.i1,1,V.Local.i2)
+		F.Intrinsic.UI.ChangeWaitStatus("Comparing inventory and router line info",V.Local.i2,1,V.DataTable.dtInventory.RowCount)
+		F.Intrinsic.String.Build("Part = '{0}'",V.DataTable.dtInventory(V.Local.i1).Part!FieldValTrim,V.Local.sFilter)
+		F.Data.DataTable.Select("dtRouter",V.Local.sFilter,V.Local.sRet)
+		'If it is found, delete row
+		F.Intrinsic.Control.If(V.Local.sRet,<>,"***NORETURN***")
+			F.Data.DataTable.DeleteRow("dtInventory",V.Local.i1)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Next(V.Local.i1)
+F.Intrinsic.Control.EndIf
+
+F.Data.DataTable.Close("dtRouter")
+gui.F_PartRouter.GsGCList1.AddGridviewFromDatatable("gvInv","dtInventory")
+gui.F_PartRouter.GsGCList1.MainView("gvInv")
+gui.F_PartRouter.GsGCList1.SetColumnProperty("gvInv","Part","HeaderHAlignment","Center")
+gui.F_PartRouter.GsGCList1.SetColumnProperty("gvInv","Description","HeaderHAlignment","Center")
+
+F.Intrinsic.UI.CloseWaitDialog
+Program.Sub.cmdRefresh_Click.End
+
+Program.Sub.cmdRefresh2_Click.Start
+V.Local.i1.Declare
+V.Local.i2.Declare
+V.Local.sFilter.Declare
+V.Local.sPL.Declare
+V.Local.sRet.Declare
+V.Local.sSQL.Declare
+
+V.Local.sPL.Set(V.Screen.F_PartRouter!ddlPL1.Text)
+
+F.Intrinsic.UI.InvokeWaitDialog("Retrieving inventory and router header info")
+
+F.Intrinsic.Control.If(V.DataTable.dtInvFG.Exists,=,True)
+	F.Data.DataTable.Close("dtInvFG")
+F.Intrinsic.Control.EndIf
+
+'Retrieve inventory master with the selected PL
+F.Intrinsic.String.Build("select Part, Description from v_inventory_mstr where product_line = '{0}' order by part",V.Local.sPL.Trim,V.Local.sSQL)
+F.Data.DataTable.CreateFromSQL("dtInvFG","conx",V.Local.sSQL,True)
+
+'Retrieve distinct material sequence from router_line
+F.Data.DataTable.CreateFromSQL("dtRouter","conx","select router as Part from v_router_header order by router",True)
+
+F.Intrinsic.Control.If(V.DataTable.dtInvFG.RowCount,>,0)
+	F.Intrinsic.Control.For(V.Local.i1,V.DataTable.dtInvFG.RowCount--,0,-1)
+		F.Intrinsic.Math.Add(V.Local.i1,1,V.Local.i2)
+		F.Intrinsic.UI.ChangeWaitStatus("Comparing inventory and router header info",V.Local.i2,1,V.DataTable.dtInvFG.RowCount)
+		F.Intrinsic.String.Build("Part = '{0}'",V.DataTable.dtInvFG(V.Local.i1).Part!FieldValTrim,V.Local.sFilter)
+		F.Data.DataTable.Select("dtRouter",V.Local.sFilter,V.Local.sRet)
+		'If it is found, delete row
+		F.Intrinsic.Control.If(V.Local.sRet,<>,"***NORETURN***")
+			F.Data.DataTable.DeleteRow("dtFG",V.Local.i1)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Next(V.Local.i1)
+F.Intrinsic.Control.EndIf
+
+F.Data.DataTable.Close("dtRouter")
+gui.F_PartRouter.GsGCList2.AddGridviewFromDatatable("gvInvFG","dtInvFG")
+gui.F_PartRouter.GsGCList2.MainView("gvInvFG")
+gui.F_PartRouter.GsGCList2.SetColumnProperty("gvInvFG","Part","HeaderHAlignment","Center")
+gui.F_PartRouter.GsGCList2.SetColumnProperty("gvInvFG","Description","HeaderHAlignment","Center")
+
+F.Intrinsic.UI.CloseWaitDialog
+Program.Sub.cmdRefresh2_Click.End
+
+Program.Sub.Comments.Start
+${$0$}$Part Not Found in Router$}$MHERTANTO$}$19/9/2017 10:49:27 PM$}$False
+${$3$}$0$}$$}$0$}$-1$}$$}$12:00:00 AM$}$This program lists parts not found in any router as a material sequence
+Program.Sub.Comments.End
